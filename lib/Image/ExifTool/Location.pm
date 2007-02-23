@@ -3,129 +3,14 @@ package Image::ExifTool::Location;
 use warnings;
 use strict;
 use Carp;
+use Class::Std;
 
-use version; our $VERSION = qv('0.0.1');
+use version; our $VERSION = qv('0.0.2');
 
-sub new {
-    croak "Call Image::ExifTool->new() instead of " . __PACKAGE__ . "->new()";
-}
+my %attr : ATTR;
 
-# Reopen Image::ExifTool
-
-package Image::ExifTool;
-
-use warnings;
-use strict;
-use Carp;
-use Image::ExifTool;
-use Geo::Coordinates::DecimalDegrees;
-
-my @LOC_TAGS = qw(
-    GPSLatitude     GPSLatitudeRef
-    GPSLongitude    GPSLongitudeRef
-);
-
-my @ELE_TAGS = qw(
-    GPSAltitude     GPSAltitudeRef
-);
-
-my @GROUP = (
-    Group => 'GPS'
-);
-
-sub _has_all {
-    my $self = shift;
-    for (@_) {
-        return unless defined($self->GetValue($_));
-    }
-    return 1;
-}
-
-sub HasLocation {
-    my $self = shift;
-    return $self->_has_all(@LOC_TAGS);
-}
-
-sub HasElevation {
-    my $self = shift;
-    return $self->_has_all(@ELE_TAGS);
-}
-
-sub _set_latlon {
-    my $self = shift;
-    my ($name, $latlon, @sign_flags) = @_;
-    my ($d, $m, $s, $sgn) = decimal2dms($latlon);
-
-    # Work with version of Geo::Coordinates::DecimalDegrees < 0.06
-    $sgn = $latlon <=> 0 unless defined $sgn;
-
-    $self->SetNewValue($name,
-                       join(' ', abs($d), $m, $s),
-                       @GROUP);
-
-    $self->SetNewValue($name . 'Ref',
-                       $sign_flags[$sgn < 0],
-                       @GROUP);
-}
-
-sub SetLocation {
-    my $self = shift;
-    my ($lat, $lon) = @_;
-    
-    croak "SetLocation must be called with the latitude and longitude"
-        unless defined($lon);
-        
-    $self->_set_latlon('GPSLatitude',  $lat, qw(N S));
-    $self->_set_latlon('GPSLongitude', $lon, qw(E W));
-}
-
-sub SetElevation {
-    my $self = shift;
-    my ($ele) = @_;
-    
-    croak "SetElevation must be called with the elevation in metres"
-        unless defined($ele);
-
-    $self->SetNewValue('GPSAltitude',
-                       abs($ele),
-                       @GROUP);
-
-    $self->SetNewValue('GPSAltitudeRef',
-                       $ele < 0 ? '1' : '0',
-                       @GROUP,
-                       Type => 'Raw');
-}
-
-sub GetLocation {
-    my $self = shift;
-
-    my @loc = ( );
-
-    wantarray or croak "GetLocation must be called in a list context";
-
-    for my $tag (qw(GPSLatitude GPSLongitude)) {
-        my $latlon;
-        my $v = $self->GetValue($tag, 'Raw');
-        my $r = $self->GetValue($tag . 'Ref', 'Raw');
-        if (defined($v) && defined($r)) {
-            my ($d, $m, $s) = split(/\s+/, $v);
-            $latlon = dms2decimal($d, $m, $s);
-            $latlon = -$latlon if $r =~ /^[SW]/i;
-        }
-        push @loc, $latlon;
-    }
-
-    return @loc;
-}
-
-sub GetElevation {
-    my $self = shift;
-    
-    my $v = $self->GetValue('GPSAltitude', 'Raw');
-    my $r = $self->GetValue('GPSAltitudeRef', 'Raw');
-    
-    return unless defined($v) && defined($r);
-    return $v * ($r == 0 ? 1 : -1);
+sub BUILD {
+    my ($self, $id, $args) = @_;
 }
 
 1;
@@ -133,143 +18,99 @@ __END__
 
 =head1 NAME
 
-Image::ExifTool::Location - Easy setting, getting of an image's location information
+Image::ExifTool::Location - [One line description of module's purpose here]
 
 =head1 VERSION
 
-This document describes Image::ExifTool::Location version 0.0.1
+This document describes Image::ExifTool::Location version 0.0.2
 
 =head1 SYNOPSIS
 
-    use Image::ExifTool;
     use Image::ExifTool::Location;
 
-    my $exif = Image::ExifTool->new();
-
-    # Extract info from existing image
-    $exif->ExtractInfo($src);
-    # Set location
-    $exif->SetLocation(54.787515, -2.341355);
-    # Set elevation
-    $exif->SetElevation(515);
-    # Write new image
-    $exif->WriteInfo($src, $dst);
-
+=for author to fill in:
+    Brief code example(s) here showing commonest usage(s).
+    This section will be as far as many users bother reading
+    so make it as educational and exeplary as possible.
+  
 =head1 DESCRIPTION
 
-C<Image::ExifTool> is a versatile module for reading and writing EXIF
-data in a number of image formats. This module extends its interface
-adding methods that simplify the reading and writing of GPS location
-information.
-
-Without this module the interface for working with GPS location
-information is cryptic. To store latitude and longitude a total of four
-EXIF values are used - two to store the latitude and longitude in
-degrees, minutes and seconds format and two to store the hemisphere
-(north / south, east / west).
-
-This module replaces that cryptic interface with simple calls
-(C<GetLocation> and C<SetLocation>) that take care of encoding and
-decoding the latitude and longitude values correctly.
+=for author to fill in:
+    Write a full description of the module and its features here.
+    Use subsections (=head2, =head3) as appropriate.
 
 =head1 INTERFACE 
 
-The methods this module provides are added directly to
-C<Image::ExifTool>'s interface. To use them do something
-like this:
-
-    use Image::ExifTool;
-    use Image::ExifTool::Location;
-
-    my $exif = Image::ExifTool->new();
-
-    $exif->ExtractInfo($src);
-    $exif->SetLocation(54.787515, -2.341355);
-    $exif->WriteInfo($src, $dst);
-
-All of the methods described below are implemented in terms of
-C<Image::ExifTool>'s C<GetValue> and C<SetNewValue> methods. Read the
-documentation for C<Image::ExifTool> for more information.
-
-=over
-
-=item C<HasLocation()>
-
-Returns true if the image contains all of these EXIF tags:
-
-    GPSLatitude     GPSLatitudeRef
-    GPSLongitude    GPSLongitudeRef
-
-=item C<HasElevation()>
-
-Returns true if the image contains both of these EXIF tags:
-
-    GPSAltitude     
-    GPSAltitudeRef
-
-=item C<SetLocation( $lat, $lon )>
-
-Set the image's GPS location to the specified latitude and longitude.
-
-=item C<SetElevation( $ele )>
-
-Set the image's GPS elevation to the specified height in metres. Use negative
-values for locations below sea level.
-
-=item C<GetLocation()>
-
-Return the image's GPS location as a two element list:
-
-    my ($lat, $lon) = $exif->GetLocation();
-
-=item C<GetElevation()>
-
-Return the image's GPS elevation:
-
-    my $ele = $exif->GetElevation();
-
-=back
+=for author to fill in:
+    Write a separate section listing the public components of the modules
+    interface. These normally consist of either subroutines that may be
+    exported, or methods that may be called on objects belonging to the
+    classes provided by the module.
 
 =head1 DIAGNOSTICS
 
+=for author to fill in:
+    List every single error and warning message that the module can
+    generate (even the ones that will "never happen"), with a full
+    explanation of each problem, one or more likely causes, and any
+    suggested remedies.
+
 =over
 
-=item C<< Call Image::ExifTool->new() instead of Image::ExifTool::Location->new() >>
+=item C<< Error message here, perhaps with %s placeholders >>
 
-This module adds methods directly to Image::ExifTool. After
+[Description of error here]
 
-    use Image::ExifTool::Location;
-    
-create a new Image::ExifTool object as normal.
+=item C<< Another error message here >>
 
-=item C<< SetLocation must be called with the latitude and longitude >>
+[Description of error here]
 
-C<SetLocation> requires latitude and longitude values in decimal degrees.
-
-=item C<< SetElevation must be called with the elevation in metres >>
-
-C<SetElevation> requires the elavation in metres as a signed number.
-
-=item C<< GetLocation must be called in a list context >>
-
-C<GetLocation> returns latitude and longitude as a two element list.
+[Et cetera, et cetera]
 
 =back
 
-=head1 DEPENDENCIES
-
-    Image::ExifTool
-    Geo::Coordinates::DecimalDegrees
-
 =head1 CONFIGURATION AND ENVIRONMENT
+
+=for author to fill in:
+    A full explanation of any configuration system(s) used by the
+    module, including the names and locations of any configuration
+    files, and the meaning of any environment variables or properties
+    that can be set. These descriptions must also include details of any
+    configuration language used.
   
 Image::ExifTool::Location requires no configuration files or environment variables.
 
+=head1 DEPENDENCIES
+
+=for author to fill in:
+    A list of all the other modules that this module relies upon,
+    including any restrictions on versions, and an indication whether
+    the module is part of the standard Perl distribution, part of the
+    module's distribution, or must be installed separately. ]
+
+None.
+
 =head1 INCOMPATIBILITIES
+
+=for author to fill in:
+    A list of any modules that this module cannot be used in conjunction
+    with. This may be due to name conflicts in the interface, or
+    competition for system or program resources, or due to internal
+    limitations of Perl (for example, many modules that use source code
+    filters are mutually incompatible).
 
 None reported.
 
 =head1 BUGS AND LIMITATIONS
+
+=for author to fill in:
+    A list of known problems with the module, together with some
+    indication Whether they are likely to be fixed in an upcoming
+    release. Also a list of restrictions on the features the module
+    does provide: data types that cannot be handled, performance issues
+    and the circumstances in which they may arise, practical
+    limitations on the size of data sets, special cases that are not
+    (yet) handled, etc.
 
 No bugs have been reported.
 
