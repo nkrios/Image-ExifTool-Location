@@ -11,8 +11,9 @@ WriteMakefile(
     LICENSE       => 'perl',
     PL_FILES      => {},
     PREREQ_PM     => {
-        'Test::More' => 0,
-        'version'    => 0,
+        'Image::ExifTool' => '6.76',
+        'Test::More'      => 0,
+        'version'         => 0,
     },
     dist  => { COMPRESS => 'gzip -9f', SUFFIX => 'gz', },
     clean => { FILES    => 'Image-ExifTool-Location-*' },

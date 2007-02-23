@@ -4,7 +4,7 @@ use warnings;
 use strict;
 use Carp;
 
-use version; our $VERSION = qv( '0.0.3' );
+use version; our $VERSION = qv( '0.0.4' );
 
 sub new {
     croak "Call Image::ExifTool->new() instead of " . __PACKAGE__ . "->new()";
@@ -55,7 +55,7 @@ sub _set_latlon {
     $self->SetNewValue( $name, abs( $latlon ), @GROUP, Type => 'ValueConv' );
     $self->SetNewValue(
         $name . 'Ref',
-        $sign_flags[ $latlon < 0 ],
+        $sign_flags[ $latlon < 0 ? 1 : 0 ],
         @GROUP, Type => 'ValueConv'
     );
 }
@@ -110,7 +110,7 @@ Image::ExifTool::Location - Easy setting, getting of an image's location informa
 
 =head1 VERSION
 
-This document describes Image::ExifTool::Location version 0.0.3
+This document describes Image::ExifTool::Location version 0.0.4
 
 =head1 SYNOPSIS
 

@@ -10,3 +10,6 @@ Revision history for Image-ExifTool-Location
         Fixed scary regression to pre-released version. Sorry folks.
         Implemented Phil's suggestion to use ValueConv values and remove
         dependency on Geo::Coordinates::DecimalDegrees.
+
+0.0.4   2007-02-23
+        Made Image::ExifTool dependency explicit.
